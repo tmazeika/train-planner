@@ -1,12 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/urfave/cli"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -32,22 +35,63 @@ func (t train) toTimeStr() string {
 }
 
 func main() {
-	const fromStation = "BBY"
-	const toStation = "PHL"
+	app := cli.NewApp()
+	app.Name = "train-planner"
+	app.Usage = "Amtrak train planner"
+	app.EnableBashCompletion = true
+	app.Commands = []cli.Command{
+		{
+			Name:      "list",
+			Aliases:   []string{"l"},
+			ArgsUsage: "<from station> <to station> [date]",
+			Usage:     "Lists all trains between two stations for a given date " +
+				"(format '1/13/19') or today if empty",
+			Action: func(c *cli.Context) error {
+				fromStation := strings.ToUpper(c.Args().Get(0))
+				toStation := strings.ToUpper(c.Args().Get(1))
+				date := c.Args().Get(2)
+				if fromStation == "" {
+					return errors.New("missing <from station>")
+				}
+				if toStation == "" {
+					return errors.New("missing <to station>")
+				}
+				if date == "" {
+					date = time.Now().Format("1/2/06")
+				}
+				when, err := time.Parse("1/2/06", date)
+				if err != nil {
+					return errors.New("malformed [date]: format is '1/13/19'")
+				}
 
-	body, err := getHtml(time.Now(), fromStation, toStation)
-	if err != nil {
-		log.Fatalln("failed to get HTML:", err)
+				body, err := getHtml(when, fromStation, toStation)
+				if err != nil {
+					return fmt.Errorf("failed to get HTML: %s", err)
+				}
+
+				trains, err := htmlToTrains(body, fromStation, toStation)
+				if err != nil {
+					return fmt.Errorf("failed to extract trains from HTML: %s", err)
+				}
+
+				fmt.Printf("Trains from %s to %s on %s:\n", fromStation, toStation, date)
+				for _, train := range trains {
+					fmt.Printf("- [%s -> %s] %s\n", train.fromTimeStr(), train.toTimeStr(), train.name)
+				}
+				return nil
+			},
+		},
 	}
+	// app.Flags = []cli.Flag {
+	// 	cli.StringFlag{
+	// 		Name: "after",
+	// 		Usage: "only find trains after `TIME` (format '3:04pm')",
+	// 	},
+	// }
 
-	trains, err := htmlToTrains(body, fromStation, toStation)
+	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatalln("failed to extract trains from HTML:", err)
-	}
-
-	fmt.Printf("Today's trains from %s to %s:\n", fromStation, toStation)
-	for _, train := range trains {
-		fmt.Printf("- [%s -> %s] %s\n", train.fromTimeStr(), train.toTimeStr(), train.name)
+		log.Fatalln(err)
 	}
 }
 
@@ -99,7 +143,7 @@ func htmlToTrains(body io.ReadCloser, fromStation, toStation string) ([]train, e
 				durationStr := s.Find("#_duration_span").Text()
 				fromTimeStr := s.Find("#_depart_time_span").Text()
 
-				if len(name) == 0 {
+				if name == "" {
 					log.Println("found empty name")
 					return
 				}
