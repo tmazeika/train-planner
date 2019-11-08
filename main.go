@@ -43,37 +43,20 @@ func main() {
 }
 
 func getHtml(when time.Time, from, to string) io.ReadCloser {
-	from = strings.ToUpper(from)
-	to = strings.ToUpper(to)
-
-	knownStations := map[string]string{
-		"BBY": "Boston, MA",
-		"BOS": "Boston, MA",
-		"PHL": "Philadelphia, PA",
-		"WAS": "Washington, DC",
-	}
 	date := when.Format("01/02/2006")
-
-	if _, ok := knownStations[from]; !ok {
-		panic("invalid from station: " + from)
-	}
-	if _, ok := knownStations[to]; !ok {
-		panic("invalid to station: " + from)
-	}
-
 	form := url.Values{}
+
 	form.Add("wdf_origin", from)
-	form.Add("wdf_origin", knownStations[from])
 	form.Add("wdf_destination", to)
-	form.Add("wdf_destination", knownStations[to])
 	form.Add("/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/journeyRequirements[1]/departDate.usdate", date)
-	form.Add("xwdf_person_type1", "/sessionWorkflow/productWorkflow[@product=\"Rail\"]/tripRequirements/allJourneyRequirements/person[1]/personType")
+	form.Add("xwdf_person_type1", "/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/allJourneyRequirements/person[1]/personType")
 	form.Add("wdf_person_type1", "Adult")
 	form.Add("_handler=amtrak.presentation.handler.request.rail.farefamilies.AmtrakRailFareFamiliesSearchRequestHandler/_xpath=/sessionWorkflow/productWorkflow[@product='Rail'].x", "62")
 	form.Add("xwdf_origin", "/sessionWorkflow/productWorkflow[@product='Rail']/travelSelection/journeySelection[1]/departLocation/search")
 	form.Add("xwdf_destination", "/sessionWorkflow/productWorkflow[@product='Rail']/travelSelection/journeySelection[1]/arriveLocation/search")
 
-	req, err := http.NewRequest(http.MethodPost, "https://tickets.amtrak.com/itd/amtrak", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(http.MethodPost,
+		"https://tickets.amtrak.com/itd/amtrak", strings.NewReader(form.Encode()))
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +64,8 @@ func getHtml(when time.Time, from, to string) io.ReadCloser {
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("Accept-Language", "en-US, en;q=0.9")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", "ADRUM=s=1573183464194&r=https%3A%2F%2Ftickets.amtrak.com%2Fitd%2Famtrak%3F0")
+	req.Header.Set("Cookie",
+		"ADRUM=s=1573183464194&r=https%3A%2F%2Ftickets.amtrak.com%2Fitd%2Famtrak%3F0")
 	req.Header.Set("Referer", "https://www.amtrak.com/home.html")
 	req.Header.Set("User-Agent", "train-planner")
 
