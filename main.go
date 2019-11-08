@@ -4,51 +4,59 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
 
-func main() {
-	html := getHtml(time.Now().Add(time.Hour), "PHL", "BBY")
-	defer html.Close()
-
-	// b, err := ioutil.ReadAll(html)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(string(b))
-	// return
-
-	doc, err := goquery.NewDocumentFromReader(html)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Today's trains:")
-	doc.Find(".newFareFamilyTable:not(:has(.transfer_copy)) td:has(#_depart_time_span)").
-			Each(func(i int, s *goquery.Selection) {
-				train := s.Find("#_service_span").Text()
-				duration, err := time.ParseDuration(strings.ReplaceAll(s.Find("#_duration_span").Text(), " ", ""))
-				if err != nil {
-					panic(err)
-				}
-				from, err := time.Parse("2006-01-02T15:04:05.999-07:00",
-					s.Find("#_depart_time_span").Text())
-				if err != nil {
-					panic(err)
-				}
-				fmt.Printf("- [%s -> %s] %s\n", from.Format("03:04pm"), from.Add(duration).Format("03:04pm"), train)
-			})
+type train struct {
+	name        string
+	fromStation string
+	fromTime    time.Time
+	toStation   string
+	duration    time.Duration
 }
 
-func getHtml(when time.Time, from, to string) io.ReadCloser {
+func (t train) toTime() time.Time {
+	return t.fromTime.Add(t.duration)
+}
+
+func (t train) fromTimeStr() string {
+	return t.fromTime.Format("03:04pm")
+}
+
+func (t train) toTimeStr() string {
+	return t.toTime().Format("03:04pm")
+}
+
+func main() {
+	const fromStation = "BBY"
+	const toStation = "PHL"
+
+	body, err := getHtml(time.Now(), fromStation, toStation)
+	if err != nil {
+		log.Fatalln("failed to get HTML:", err)
+	}
+
+	trains, err := htmlToTrains(body, fromStation, toStation)
+	if err != nil {
+		log.Fatalln("failed to extract trains from HTML:", err)
+	}
+
+	fmt.Printf("Today's trains from %s to %s:\n", fromStation, toStation)
+	for _, train := range trains {
+		fmt.Printf("- [%s -> %s] %s\n", train.fromTimeStr(), train.toTimeStr(), train.name)
+	}
+}
+
+func getHtml(when time.Time, fromStation, toStation string) (io.ReadCloser, error) {
 	date := when.Format("01/02/2006")
 	form := url.Values{}
 
-	form.Add("wdf_origin", from)
-	form.Add("wdf_destination", to)
+	form.Add("wdf_origin", fromStation)
+	form.Add("wdf_destination", toStation)
 	form.Add("/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/journeyRequirements[1]/departDate.usdate", date)
 	form.Add("xwdf_person_type1", "/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/allJourneyRequirements/person[1]/personType")
 	form.Add("wdf_person_type1", "Adult")
@@ -59,7 +67,7 @@ func getHtml(when time.Time, from, to string) io.ReadCloser {
 	req, err := http.NewRequest(http.MethodPost,
 		"https://tickets.amtrak.com/itd/amtrak", strings.NewReader(form.Encode()))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	req.Header.Set("Accept", "text/html")
@@ -72,7 +80,49 @@ func getHtml(when time.Time, from, to string) io.ReadCloser {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return resp.Body
+	return resp.Body, nil
+}
+
+func htmlToTrains(body io.ReadCloser, fromStation, toStation string) ([]train, error) {
+	defer body.Close()
+	doc, err := goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return nil, err
+	}
+
+	trains := make([]train, 0)
+	doc.Find(".newFareFamilyTable:not(:has(.transfer_copy)) td:has(#_depart_time_span)").
+			Each(func(i int, s *goquery.Selection) {
+				name := s.Find("#_service_span").Text()
+				durationStr := s.Find("#_duration_span").Text()
+				fromTimeStr := s.Find("#_depart_time_span").Text()
+
+				if len(name) == 0 {
+					log.Println("found empty name")
+					return
+				}
+
+				duration, err := time.ParseDuration(strings.ReplaceAll(durationStr, " ", ""))
+				if err != nil {
+					log.Printf("found invalid duration '%s': %s\n", durationStr, err)
+					return
+				}
+
+				fromTime, err := time.Parse("2006-01-02T15:04:05.999-07:00", fromTimeStr)
+				if err != nil {
+					log.Panicf("found invalid departure time '%s': %s\n", fromTimeStr, err)
+					return
+				}
+
+				trains = append(trains, train{
+					name:        name,
+					fromStation: fromStation,
+					fromTime:    fromTime,
+					toStation:   toStation,
+					duration:    duration,
+				})
+			})
+	return trains, nil
 }
