@@ -92,7 +92,7 @@ func htmlToTrains(body io.ReadCloser, fromStation, toStation string) ([]train, e
 		return nil, err
 	}
 
-	trains := make([]train, 0)
+	var trains []train
 	doc.Find(".newFareFamilyTable:not(:has(.transfer_copy)) td:has(#_depart_time_span)").
 			Each(func(i int, s *goquery.Selection) {
 				name := s.Find("#_service_span").Text()
