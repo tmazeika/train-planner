@@ -112,7 +112,7 @@ func htmlToTrains(body io.ReadCloser, fromStation, toStation string) ([]train, e
 
 				fromTime, err := time.Parse("2006-01-02T15:04:05.999-07:00", fromTimeStr)
 				if err != nil {
-					log.Panicf("found invalid departure time '%s': %s\n", fromTimeStr, err)
+					log.Printf("found invalid departure time '%s': %s\n", fromTimeStr, err)
 					return
 				}
 
