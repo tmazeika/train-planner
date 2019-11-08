@@ -12,6 +12,7 @@ import (
 
 func main() {
 	html := getHtml(time.Now().Add(time.Hour), "PHL", "BBY")
+	defer html.Close()
 
 	// b, err := ioutil.ReadAll(html)
 	// if err != nil {
