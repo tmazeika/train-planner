@@ -1,6 +1,6 @@
 package fetch
 
-type SortByFromTime []*Train
+type SortByFromTime []Train
 
 func (s SortByFromTime) Len() int {
 	return len(s)

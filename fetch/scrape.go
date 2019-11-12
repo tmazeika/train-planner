@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func RawScrapeTo(dst io.Writer, query *Query) error {
-	reader, err := getHtml(query)
+func rawScrapeTo(dst io.Writer, q Query) error {
+	reader, err := getHtml(q)
 	if err != nil {
 		return err
 	}
@@ -21,31 +21,28 @@ func RawScrapeTo(dst io.Writer, query *Query) error {
 	return err
 }
 
-func Scrape(query *Query, cache bool) ([]*Train, error) {
-	reader, err := getHtml(query)
+func scrape(q Query) ([]Train, error) {
+	reader, err := getHtml(q)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
-	trains, err := htmlToTrains(reader, query)
+	trains, err := htmlToTrains(reader, q)
 	if err != nil {
 		return nil, err
 	}
 
-	if cache {
-		return trains, saveCached(trains)
-	} else {
-		return trains, nil
-	}
+	// Cache and return result.
+	return trains, saveCached(trains)
 }
 
-func getHtml(query *Query) (io.ReadCloser, error) {
-	date := query.When.Format("01/02/2006")
+func getHtml(q Query) (io.ReadCloser, error) {
+	date := q.When.Format("01/02/2006")
 	form := url.Values{}
 
-	form.Add("wdf_origin", query.FromStation)
-	form.Add("wdf_destination", query.ToStation)
+	form.Add("wdf_origin", q.FromStation)
+	form.Add("wdf_destination", q.ToStation)
 	form.Add("/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/journeyRequirements[1]/departDate.usdate", date)
 	form.Add("xwdf_person_type1", "/sessionWorkflow/productWorkflow[@product='Rail']/tripRequirements/allJourneyRequirements/person[1]/personType")
 	form.Add("wdf_person_type1", "Adult")
@@ -74,13 +71,13 @@ func getHtml(query *Query) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func htmlToTrains(body io.Reader, query *Query) ([]*Train, error) {
+func htmlToTrains(body io.Reader, q Query) ([]Train, error) {
 	doc, err := goquery.NewDocumentFromReader(body)
 	if err != nil {
 		return nil, err
 	}
 
-	var trains []*Train
+	var trains []Train
 	doc.Find(".newFareFamilyTable:not(:has(.transfer_copy)) td:has(#_depart_time_span)").
 			Each(func(i int, s *goquery.Selection) {
 				name := s.Find("#_service_span").Text()
@@ -104,7 +101,7 @@ func htmlToTrains(body io.Reader, query *Query) ([]*Train, error) {
 					return
 				}
 
-				trains = append(trains, query.newTrain(name, fromTime, duration))
+				trains = append(trains, q.newTrain(name, fromTime, duration))
 			})
 	return trains, nil
 }

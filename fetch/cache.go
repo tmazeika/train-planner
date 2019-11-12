@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-var CacheColdMissErr = errors.New("cache cold miss")
+var cacheColdMissErr = errors.New("cache cold miss")
 
-func Cached(query *Query) ([]*Train, error) {
-	cache, err := getCached()
+func getCached(q Query) ([]Train, error) {
+	cache, err := readCached()
 	if err != nil {
 		return nil, err
 	}
 
-	var trains []*Train
+	var trains []Train
 	for _, t := range cache {
-		if t.FromStation == query.FromStation &&
-			t.ToStation == query.ToStation &&
-			t.SameDay(query.When) {
+		if t.FromStation == q.FromStation &&
+			t.ToStation == q.ToStation &&
+			t.SameDay(q.When) {
 			trains = append(trains, t)
 		}
 	}
@@ -27,17 +27,17 @@ func Cached(query *Query) ([]*Train, error) {
 	// have a cold miss. If we find at least one train, then we have to have seen
 	// all trains for that day, so we should be good to go.
 	if len(trains) == 0 {
-		return nil, CacheColdMissErr
+		return nil, cacheColdMissErr
 	}
 	return trains, nil
 }
 
-func saveCached(newTrains []*Train) error {
+func saveCached(newTrains []Train) error {
 	now := time.Now()
 	// Read cache.
-	cache, err := getCached()
-	if err != nil && err != CacheColdMissErr {
-
+	cache, err := readCached()
+	if err != nil && err != cacheColdMissErr {
+		return err
 	}
 	// Clean cache.
 	for key, t := range cache {
@@ -60,11 +60,11 @@ func saveCached(newTrains []*Train) error {
 	return gob.NewEncoder(file).Encode(cache)
 }
 
-func getCached() (map[string]*Train, error) {
+func readCached() (map[string]Train, error) {
 	file, err := os.OpenFile(".trains.cache", os.O_RDONLY, 0755)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]*Train), CacheColdMissErr
+			return make(map[string]Train), cacheColdMissErr
 		} else {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func getCached() (map[string]*Train, error) {
 	defer file.Close()
 
 	// Decode cache.
-	var cache map[string]*Train
+	var cache map[string]Train
 	if err := gob.NewDecoder(file).Decode(&cache); err != nil {
 		return nil, err
 	}
