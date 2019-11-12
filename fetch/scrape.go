@@ -1,4 +1,4 @@
-package web
+package fetch
 
 import (
 	"github.com/PuerkitoBio/goquery"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func RawScrape(dst io.Writer, query *Query) error {
+func RawScrapeTo(dst io.Writer, query *Query) error {
 	reader, err := getHtml(query)
 	if err != nil {
 		return err
@@ -21,14 +21,23 @@ func RawScrape(dst io.Writer, query *Query) error {
 	return err
 }
 
-func Scrape(query *Query) ([]*Train, error) {
+func Scrape(query *Query, cache bool) ([]*Train, error) {
 	reader, err := getHtml(query)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
-	return htmlToTrains(reader, query)
+	trains, err := htmlToTrains(reader, query)
+	if err != nil {
+		return nil, err
+	}
+
+	if cache {
+		return trains, saveCached(trains)
+	} else {
+		return trains, nil
+	}
 }
 
 func getHtml(query *Query) (io.ReadCloser, error) {

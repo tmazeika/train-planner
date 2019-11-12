@@ -2,18 +2,20 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/tmazeika/train-planner/web"
+	"github.com/tmazeika/train-planner/fetch"
 	"github.com/urfave/cli"
 )
 
 func List(c *cli.Context) error {
-	query, err := web.NewQuery(c)
+	query, err := fetch.NewQuery(c)
 	if err != nil {
 		return err
 	}
 
-	trains, err := web.Scrape(query)
-	if err != nil {
+	trains, err := fetch.Cached(query)
+	if err == fetch.CacheColdMissErr {
+		trains, err = fetch.Scrape(query, true)
+	} else if err != nil {
 		return err
 	}
 

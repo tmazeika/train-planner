@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"github.com/tmazeika/train-planner/web"
+	"github.com/tmazeika/train-planner/fetch"
 	"github.com/urfave/cli"
 	"os"
 )
 
 func Save(c *cli.Context) error {
-	query, err := web.NewQuery(c)
+	query, err := fetch.NewQuery(c)
 	if err != nil {
 		return err
 	}
@@ -18,5 +18,5 @@ func Save(c *cli.Context) error {
 	}
 	defer file.Close()
 
-	return web.RawScrape(file, query)
+	return fetch.RawScrapeTo(file, query)
 }
