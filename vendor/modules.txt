@@ -10,6 +10,8 @@ github.com/russross/blackfriday/v2
 github.com/shurcooL/sanitized_anchor_name
 # github.com/urfave/cli v1.22.1
 github.com/urfave/cli
+# github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
+github.com/yosssi/gohtml
 # golang.org/x/net v0.0.0-20181114220301-adae6a3d119a
 golang.org/x/net/html
 golang.org/x/net/html/atom
