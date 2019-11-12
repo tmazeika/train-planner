@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tmazeika/train-planner/fetch"
 	"github.com/urfave/cli"
+	"sort"
 )
 
 func List(c *cli.Context) error {
@@ -18,6 +19,7 @@ func List(c *cli.Context) error {
 	} else if err != nil {
 		return err
 	}
+	sort.Sort(fetch.SortByFromTime(trains))
 
 	fmt.Printf("Trains from %s to %s on %s:\n",
 		query.FromStation, query.ToStation, query.DateStr())
