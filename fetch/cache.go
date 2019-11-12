@@ -41,7 +41,7 @@ func saveCached(newTrains []*Train) error {
 	}
 	// Clean cache.
 	for key, t := range cache {
-		if t.FromTime.Before(now) {
+		if t.FromTime.Before(now.Truncate(24 * time.Hour)) {
 			delete(cache, key)
 		}
 	}
