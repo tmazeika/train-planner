@@ -3,6 +3,7 @@ package fetch
 import (
 	"bytes"
 	"crypto/md5"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -29,6 +30,14 @@ func (t Train) ToTimeStr() string {
 
 func (t Train) SameDay(when time.Time) bool {
 	return t.FromTime.Truncate(24 * time.Hour).Equal(when.Truncate(24 * time.Hour))
+}
+
+func (t Train) DurationStr() string {
+	d := t.Duration.Round(time.Minute)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	return fmt.Sprintf("%dh %dm", h, m)
 }
 
 func (t Train) hash() string {

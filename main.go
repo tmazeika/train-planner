@@ -22,6 +22,14 @@ func main() {
 			Action: cmd.List,
 		},
 		{
+			Name:      "plan",
+			Aliases:   []string{"p"},
+			ArgsUsage: "<from station> <to station> [date]",
+			Usage: "Show journey plans between two stations for a given date " +
+					"(format '1/13/19') or today if empty",
+			Action: cmd.Plan,
+		},
+		{
 			Name:      "save",
 			Aliases:   []string{"s"},
 			ArgsUsage: "<from station> <to station> [date]",
@@ -33,7 +41,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }
