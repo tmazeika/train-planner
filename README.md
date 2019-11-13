@@ -10,7 +10,7 @@ In your cloned repository, run: `go run main.go [command]`.
 - **help \[command\]** Shows a list of commands or help for one command.
 
 ### Examples
-- Find trains from Philadelphia's 30<sup>th</sup> Street Station to Boston's Back Bay Station on 11/13/2020: `go run main.go list phl bby 11/13/20`
+- Find trains from Philadelphia's 30<sup>th</sup> Street Station to Boston's Back Bay Station on October 12, 2020: `go run main.go list phl bby 10/12/20`
 
 ### Notes
 Web scraping is inherently unreliable. Breaking changes could happen at any time. Even a poor network connection could result in no results.
